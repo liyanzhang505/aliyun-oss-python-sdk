@@ -93,19 +93,21 @@ class ObjectIterator(_BaseIterator):
     :param marker: 分页符
     :param max_keys: 每次调用 `list_objects` 时的max_keys参数。注意迭代器返回的数目可能会大于该值。
     """
-    def __init__(self, bucket, prefix='', delimiter='', marker='', max_keys=100, max_retries=None):
+    def __init__(self, bucket, prefix='', delimiter='', marker='', max_keys=100, max_retries=None, headers=None):
         super(ObjectIterator, self).__init__(marker, max_retries)
 
         self.bucket = bucket
         self.prefix = prefix
         self.delimiter = delimiter
         self.max_keys = max_keys
+        self.headers = headers
 
     def _fetch(self):
         result = self.bucket.list_objects(prefix=self.prefix,
                                           delimiter=self.delimiter,
                                           marker=self.next_marker,
-                                          max_keys=self.max_keys)
+                                          max_keys=self.max_keys,
+                                          headers=self.headers)
         self.entries = result.object_list + [SimplifiedObjectInfo(prefix, None, None, None, None, None)
                                              for prefix in result.prefix_list]
         self.entries.sort(key=lambda obj: obj.key)

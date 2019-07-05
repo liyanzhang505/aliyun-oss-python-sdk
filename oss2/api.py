@@ -371,6 +371,7 @@ class Bucket(_Base):
     RESTORE = 'restore'
     OBJECTMETA = 'objectMeta'
     POLICY = 'policy'
+    REQUESTPAYMENT  = 'requestPayment'
 
     def __init__(self, auth, endpoint, bucket_name,
                  is_cname=False,
@@ -435,7 +436,7 @@ class Bucket(_Base):
             params['playlistName'] = playlist_name
         return self.auth._sign_rtmp_url(url, self.bucket_name, channel_name, expires, params)
 
-    def list_objects(self, prefix='', delimiter='', marker='', max_keys=100):
+    def list_objects(self, prefix='', delimiter='', marker='', max_keys=100, headers=None):
         """根据前缀罗列Bucket里的文件。
 
         :param str prefix: 只罗列文件名为该前缀的文件
@@ -445,6 +446,7 @@ class Bucket(_Base):
 
         :return: :class:`ListObjectsResult <oss2.models.ListObjectsResult>`
         """
+        headers = http.CaseInsensitiveDict(headers)
         logger.debug(
             "Start to List objects, bucket: {0}, prefix: {1}, delimiter: {2}, marker: {3}, max-keys: {4}".format(
                 self.bucket_name, to_string(prefix), delimiter, to_string(marker), max_keys))
@@ -453,7 +455,7 @@ class Bucket(_Base):
                                         'delimiter': delimiter,
                                         'marker': marker,
                                         'max-keys': str(max_keys),
-                                        'encoding-type': 'url'})
+                                        'encoding-type': 'url'}, headers=headers)
         logger.debug("List objects done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return self._parse_result(resp, xml_utils.parse_list_objects, ListObjectsResult)
 
@@ -662,7 +664,8 @@ class Bucket(_Base):
     def select_object(self, key, sql,
                    progress_callback=None,
                    select_params=None,
-                   byte_range=None
+                   byte_range=None,
+                   headers=None
                    ):
         """Select一个文件内容，支持(Csv,Json Doc,Json Lines及其GZIP压缩文件).
 
@@ -688,7 +691,7 @@ class Bucket(_Base):
         :raises: 如果文件不存在，则抛出 :class:`NoSuchKey <oss2.exceptions.NoSuchKey>` ；还可能抛出其他异常
         """
         range_select = False
-        headers = http.CaseInsensitiveDict()
+        headers = http.CaseInsensitiveDict(headers)
         range_string = _make_range_string(byte_range)
         if range_string:
             headers['range'] = range_string
@@ -818,7 +821,8 @@ class Bucket(_Base):
 
     def select_object_to_file(self, key, filename, sql,
                    progress_callback=None,
-                   select_params=None
+                   select_params=None,
+                   headers=None
                    ):
         """Select一个文件的内容到本地文件
 
@@ -832,7 +836,7 @@ class Bucket(_Base):
         """
         with open(to_unicode(filename), 'wb') as f:
             result = self.select_object(key, sql, progress_callback=progress_callback,
-                                        select_params=select_params)
+                                        select_params=select_params, headers=headers)
 
             for chunk in result:
                 f.write(chunk)
@@ -869,7 +873,7 @@ class Bucket(_Base):
         logger.debug("Head object done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return HeadObjectResult(resp)
 
-    def create_select_object_meta(self, key, select_meta_params=None):
+    def create_select_object_meta(self, key, select_meta_params=None, headers=None):
         """获取或创建CSV,JSON LINES 文件元信息。如果元信息存在，返回之；不然则创建后返回之
 
         HTTP响应的头部包含了文件元信息，可以通过 `RequestResult` 的 `headers` 成员获得。
@@ -894,7 +898,7 @@ class Bucket(_Base):
 
         :raises: 如果Bucket不存在或者Object不存在，则抛出:class:`NotFound <oss2.exceptions.NotFound>`
         """
-        headers = http.CaseInsensitiveDict()
+        headers = http.CaseInsensitiveDict(headers)
 
         body = xml_utils.to_get_select_object_meta(select_meta_params)
         params = {'x-oss-process':  'csv/meta'}
@@ -905,7 +909,7 @@ class Bucket(_Base):
         resp = self.__do_object('POST', key, data=body, headers=headers, params=params)
         return GetSelectObjectMetaResult(resp)
 
-    def get_object_meta(self, key, params=None):
+    def get_object_meta(self, key, params=None, headers=None):
         """获取文件基本元信息，包括该Object的ETag、Size（文件大小）、LastModified，并不返回其内容。
 
         HTTP响应的头部包含了文件基本元信息，可以通过 `GetObjectMetaResult` 的 `last_modified`，`content_length`,`etag` 成员获得。
@@ -916,6 +920,7 @@ class Bucket(_Base):
 
         :raises: 如果文件不存在，则抛出 :class:`NoSuchKey <oss2.exceptions.NoSuchKey>` ；还可能抛出其他异常
         """
+        headers = http.CaseInsensitiveDict(headers)
         logger.debug("Start to get object metadata, bucket: {0}, key: {1}".format(self.bucket_name, to_string(key)))
 
         if params is None:
@@ -928,7 +933,7 @@ class Bucket(_Base):
         logger.debug("Get object metadata done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return GetObjectMetaResult(resp)
 
-    def object_exists(self, key):
+    def object_exists(self, key, headers=None):
         """如果文件存在就返回True，否则返回False。如果Bucket不存在，或是发生其他错误，则抛出异常。"""
 
         # 如果我们用head_object来实现的话，由于HTTP HEAD请求没有响应体，只有响应头部，这样当发生404时，
@@ -939,9 +944,10 @@ class Bucket(_Base):
         #
         # 目前的实现是通过get_object_meta判断文件是否存在。
 
+        headers = http.CaseInsensitiveDict(headers)
         logger.debug("Start to check if object exists, bucket: {0}, key: {1}".format(self.bucket_name, to_string(key)))
         try:
-            self.get_object_meta(key)
+            self.get_object_meta(key, headers=headers)
         except exceptions.NoSuchKey:
             return False
         except:
@@ -993,19 +999,22 @@ class Bucket(_Base):
         logger.debug("Start to update object metadata, bucket: {0}, key: {1}".format(self.bucket_name, to_string(key)))
         return self.copy_object(self.bucket_name, key, key, headers=headers)
 
-    def delete_object(self, key, params=None):
+    def delete_object(self, key, params=None, headers=None):
         """删除一个文件。
 
         :param str key: 文件名
 
         :return: :class:`RequestResult <oss2.models.RequestResult>`
         """
+        
+        headers = http.CaseInsensitiveDict(headers)
+
         logger.info("Start to delete object, bucket: {0}, key: {1}".format(self.bucket_name, to_string(key)))
-        resp = self.__do_object('DELETE', key, params=params)
+        resp = self.__do_object('DELETE', key, params=params, headers=headers)
         logger.debug("Delete object done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
 
-    def restore_object(self, key, params=None):
+    def restore_object(self, key, params=None, headers=None):
         """restore an object
             如果是第一次针对该object调用接口，返回RequestResult.status = 202；
             如果已经成功调用过restore接口，且服务端仍处于解冻中，抛异常RestoreAlreadyInProgress(status=409)
@@ -1027,6 +1036,7 @@ class Bucket(_Base):
         :param str key: object name
         :return: :class:`RequestResult <oss2.models.RequestResult>`
         """
+        headers = http.CaseInsensitiveDict(headers)
         logger.debug("Start to restore object, bucket: {0}, key: {1}".format(self.bucket_name, to_string(key)))
 
         if params is None:
@@ -1035,11 +1045,11 @@ class Bucket(_Base):
         if Bucket.RESTORE not in params:
             params[Bucket.RESTORE] = ''
 
-        resp = self.__do_object('POST', key, params=params)
+        resp = self.__do_object('POST', key, params=params, headers=headers)
         logger.debug("Restore object done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
 
-    def put_object_acl(self, key, permission, params=None):
+    def put_object_acl(self, key, permission, params=None, headers=None):
         """设置文件的ACL。
 
         :param str key: 文件名
@@ -1052,22 +1062,26 @@ class Bucket(_Base):
         logger.debug("Start to put object acl, bucket: {0}, key: {1}, acl: {2}".format(
             self.bucket_name, to_string(key), permission))
 
+        headers = http.CaseInsensitiveDict(headers)
+        headers[OSS_OBJECT_ACL] = permission
+
         if params is None:
             params = dict()
 
         if Bucket.ACL not in params:
             params[Bucket.ACL] = ''
 
-        resp = self.__do_object('PUT', key, params=params, headers={OSS_OBJECT_ACL: permission})
+        resp = self.__do_object('PUT', key, params=params, headers=headers)
         logger.debug("Put object acl done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
 
-    def get_object_acl(self, key, params=None):
+    def get_object_acl(self, key, params=None, headers=None):
         """获取文件的ACL。
 
         :return: :class:`GetObjectAclResult <oss2.models.GetObjectAclResult>`
         """
         logger.debug("Start to get object acl, bucket: {0}, key: {1}".format(self.bucket_name, to_string(key)))
+        headers = http.CaseInsensitiveDict(headers)
 
         if params is None:
             params = dict()
@@ -1075,11 +1089,11 @@ class Bucket(_Base):
         if Bucket.ACL not in params:
             params[Bucket.ACL] = ''
 
-        resp = self.__do_object('GET', key, params=params)
+        resp = self.__do_object('GET', key, params=params, headers=headers)
         logger.debug("Get object acl done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return self._parse_result(resp, xml_utils.parse_get_object_acl, GetObjectAclResult)
 
-    def batch_delete_objects(self, key_list):
+    def batch_delete_objects(self, key_list, headers=None):
         """批量删除文件。待删除文件列表不能为空。
 
         :param key_list: 文件名列表，不能为空。
@@ -1094,14 +1108,17 @@ class Bucket(_Base):
         
         data = xml_utils.to_batch_delete_objects_request(key_list, False)
 
+        headers = http.CaseInsensitiveDict(headers)
+        headers['Content-MD5'] = utils.content_md5(data)
+
         resp = self.__do_object('POST', '',
                                 data=data,
                                 params={'delete': '', 'encoding-type': 'url'},
-                                headers={'Content-MD5': utils.content_md5(data)})
+                                headers=headers)
         logger.debug("Delete objects done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return self._parse_result(resp, xml_utils.parse_batch_delete_objects, BatchDeleteObjectsResult)
 
-    def delete_object_versions(self, keylist_versions):
+    def delete_object_versions(self, keylist_versions, headers=None):
         """批量删除带版本文件。待删除文件列表不能为空。
 
         :param key_list_with_version: 带版本的文件名列表，不能为空。（如果传入，则不能为空）
@@ -1116,10 +1133,13 @@ class Bucket(_Base):
         
         data = xml_utils.to_batch_delete_objects_version_request(keylist_versions, False)
 
+        headers = http.CaseInsensitiveDict(headers)
+        headers['Content-MD5'] = utils.content_md5(data)
+
         resp = self.__do_object('POST', '',
                                 data=data,
                                 params={'delete': '', 'encoding-type': 'url'},
-                                headers={'Content-MD5': utils.content_md5(data)})
+                                headers=headers)
         logger.debug("Delete object versions done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return self._parse_result(resp, xml_utils.parse_batch_delete_objects, BatchDeleteObjectsResult)
 
@@ -1213,7 +1233,7 @@ class Bucket(_Base):
 
         return result
 
-    def abort_multipart_upload(self, key, upload_id):
+    def abort_multipart_upload(self, key, upload_id, headers=None):
         """取消分片上传。
 
         :param str key: 待上传的文件名，这个文件名要和 :func:`init_multipart_upload` 的文件名一致。
@@ -1224,8 +1244,11 @@ class Bucket(_Base):
 
         logger.debug("Start to abort multipart upload, bucket: {0}, key: {1}, upload_id: {2}".format(
             self.bucket_name, to_string(key), upload_id))
+
+        headers = http.CaseInsensitiveDict(headers)
+
         resp = self.__do_object('DELETE', key,
-                                params={'uploadId': upload_id})
+                                params={'uploadId': upload_id}, headers=headers)
         logger.debug("Abort multipart done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
 
@@ -1234,7 +1257,7 @@ class Bucket(_Base):
                                delimiter='',
                                key_marker='',
                                upload_id_marker='',
-                               max_uploads=1000):
+                               max_uploads=1000, headers=None):
         """罗列正在进行中的分片上传。支持分页。
 
         :param str prefix: 只罗列匹配该前缀的文件的分片上传
@@ -1249,6 +1272,9 @@ class Bucket(_Base):
                      "upload_id_marker: {4}, max_uploads: {5}".format(self.bucket_name, to_string(prefix), delimiter,
                                                                       to_string(key_marker), upload_id_marker,
                                                                       max_uploads))
+
+        headers = http.CaseInsensitiveDict(headers)
+
         resp = self.__do_object('GET', '',
                                 params={'uploads': '',
                                         'prefix': prefix,
@@ -1256,7 +1282,8 @@ class Bucket(_Base):
                                         'key-marker': key_marker,
                                         'upload-id-marker': upload_id_marker,
                                         'max-uploads': str(max_uploads),
-                                        'encoding-type': 'url'})
+                                        'encoding-type': 'url'},
+                                        headers=headers)
         logger.debug("List multipart uploads done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return self._parse_result(resp, xml_utils.parse_list_multipart_uploads, ListMultipartUploadsResult)
 
@@ -1303,7 +1330,7 @@ class Bucket(_Base):
         return PutObjectResult(resp)
 
     def list_parts(self, key, upload_id,
-                   marker='', max_parts=1000):
+                   marker='', max_parts=1000, headers=None):
         """列举已经上传的分片。支持分页。
 
         :param str key: 文件名
@@ -1315,10 +1342,13 @@ class Bucket(_Base):
         """
         logger.debug("Start to list parts, bucket: {0}, key: {1}, upload_id: {2}, marker: {3}, max_parts: {4}".format(
             self.bucket_name, to_string(key), upload_id, marker, max_parts))
+
+        headers = http.CaseInsensitiveDict(headers)
+
         resp = self.__do_object('GET', key,
                                 params={'uploadId': upload_id,
                                         'part-number-marker': marker,
-                                        'max-parts': str(max_parts)})
+                                        'max-parts': str(max_parts)}, headers=headers)
         logger.debug("List parts done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return self._parse_result(resp, xml_utils.parse_list_parts, ListPartsResult)
 
@@ -1330,7 +1360,7 @@ class Bucket(_Base):
 
         :return: :class:`RequestResult <oss2.models.RequestResult>`
         """
-        headers = headers or {}
+        headers = http.CaseInsensitiveDict(headers)
         headers[OSS_SYMLINK_TARGET] = urlquote(target_key, '')
 
         logger.debug("Start to put symlink, bucket: {0}, target_key: {1}, symlink_key: {2}, headers: {3}".format(
@@ -1339,7 +1369,7 @@ class Bucket(_Base):
         logger.debug("Put symlink done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
 
-    def get_symlink(self, symlink_key, params=None):
+    def get_symlink(self, symlink_key, params=None, headers=None):
         """获取符号连接文件的目标文件。
 
         :param str symlink_key: 符号连接类文件
@@ -1352,13 +1382,15 @@ class Bucket(_Base):
         logger.debug(
             "Start to get symlink, bucket: {0}, symlink_key: {1}".format(self.bucket_name, to_string(symlink_key)))
 
+        headers = http.CaseInsensitiveDict(headers)
+
         if params is None:
             params = dict()
 
         if Bucket.SYMLINK not in params:
             params[Bucket.SYMLINK] = ''
 
-        resp = self.__do_object('GET', symlink_key, params=params)
+        resp = self.__do_object('GET', symlink_key, params=params, headers=headers)
         logger.debug("Get symlink done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return GetSymlinkResult(resp)
 
@@ -1698,17 +1730,19 @@ class Bucket(_Base):
         logger.debug("Post vod playlist done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
 
-    def process_object(self, key, process):
+    def process_object(self, key, process, headers=None):
         """处理图片的接口，支持包括调整大小，旋转，裁剪，水印，格式转换等，支持多种方式组合处理。
 
         :param str key: 处理的图片的对象名称
         :param str process: 处理的字符串，例如"image/resize,w_100|sys/saveas,o_dGVzdC5qcGc,b_dGVzdA"
         """
 
+        headers = http.CaseInsensitiveDict(headers)
+
         logger.debug("Start to process object, bucket: {0}, key: {1}, process: {2}".format(
             self.bucket_name, to_string(key), process))
         process_data = "%s=%s" % (Bucket.PROCESS, process)
-        resp = self.__do_object('POST', key, params={Bucket.PROCESS: ''}, data=process_data)
+        resp = self.__do_object('POST', key, params={Bucket.PROCESS: ''}, headers=headers, data=process_data)
         logger.debug("Process object done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return ProcessObjectResult(resp)
 
@@ -1738,7 +1772,7 @@ class Bucket(_Base):
 
         return RequestResult(resp)
 
-    def get_object_tagging(self, key, params=None):
+    def get_object_tagging(self, key, params=None, headers=None):
 
         """
         :param str key: 要获取tagging的对象名称
@@ -1748,16 +1782,18 @@ class Bucket(_Base):
         logger.debug("Start to get object tagging, bucket: {0}, key: {1} params: {2}".format(
                     self.bucket_name, to_string(key), str(params)))
         
+        headers = http.CaseInsensitiveDict(headers)
+
         if params is None:
             params = dict()
 
         params[Bucket.TAGGING] = ""
 
-        resp = self.__do_object('GET', key, params=params)
+        resp = self.__do_object('GET', key, params=params, headers=headers)
 
         return self._parse_result(resp, xml_utils.parse_get_tagging, GetTaggingResult)
 
-    def delete_object_tagging(self, key, params=None):
+    def delete_object_tagging(self, key, params=None, headers=None):
         """
         :param str key: 要删除tagging的对象名称
         :return: :class:`RequestResult <oss2.models.RequestResult>` 
@@ -1765,12 +1801,14 @@ class Bucket(_Base):
         logger.debug("Start to delete object tagging, bucket: {0}, key: {1}".format(
                     self.bucket_name, to_string(key)))
 
+        headers = http.CaseInsensitiveDict(headers)
+
         if params is None:
             params = dict()
 
         params[Bucket.TAGGING] = ""
 
-        resp = self.__do_object('DELETE', key, params=params)
+        resp = self.__do_object('DELETE', key, params=params, headers=headers)
 
         logger.debug("Delete object tagging done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
@@ -1857,7 +1895,7 @@ class Bucket(_Base):
         return RequestResult(resp)
 
     def list_object_versions(self, prefix='', delimiter='', key_marker='',
-            max_keys=100, versionid_marker=''):
+            max_keys=100, versionid_marker='', headers=None):
         """根据前缀罗列Bucket里的文件的版本。
 
         :param str prefix: 只罗列文件名为该前缀的文件
@@ -1875,6 +1913,8 @@ class Bucket(_Base):
             self.bucket_name, to_string(prefix), delimiter, to_string(key_marker),
             to_string(versionid_marker), max_keys))
 
+        headers = http.CaseInsensitiveDict(headers)
+
         resp = self.__do_bucket('GET',
                                 params={'prefix': prefix,
                                         'delimiter': delimiter,
@@ -1882,7 +1922,7 @@ class Bucket(_Base):
                                         'version-id-marker': versionid_marker,
                                         'max-keys': str(max_keys),
                                         'encoding-type': 'url',
-                                        Bucket.VERSIONS: ''})
+                                        Bucket.VERSIONS: ''}, headers=headers)
         logger.debug("List object versions done, req_id: {0}, status_code: {1}"
                 .format(resp.request_id, resp.status))
 
@@ -1946,6 +1986,29 @@ class Bucket(_Base):
         resp = self.__do_bucket('DELETE', params={Bucket.POLICY: ''})
         logger.debug("Delete bucket policy done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
         return RequestResult(resp)
+
+    def put_bucket_request_payment(self, payer):
+        """设置付费者。
+
+        :param input: :class: str 
+        """
+        data = xml_utils.to_put_bucket_request_payment(payer)
+        logger.debug("Start to put bucket request payment, bucket: {0}, payer: {1}".format(self.bucket_name, payer))
+        resp = self.__do_bucket('PUT', data=data, params={Bucket.REQUESTPAYMENT: ''})
+        logger.debug("Put bucket request payment done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
+        
+        return RequestResult(resp)
+    
+    def get_bucket_request_payment(self):
+        """获取付费者设置。
+
+        :return: :class:`GetBucketRequestPaymentResult <oss2.models.GetBucketRequestPaymentResult>`
+        """
+        logger.debug("Start to get bucket request payment, bucket: {0}.".format(self.bucket_name))
+        resp = self.__do_bucket('GET', params={Bucket.REQUESTPAYMENT: ''})
+        logger.debug("Get bucket request payment done, req_id: {0}, status_code: {1}".format(resp.request_id, resp.status))
+
+        return self._parse_result(resp, xml_utils.parse_get_bucket_request_payment, GetBucketRequestPaymentResult)
 
     def _get_bucket_config(self, config):
         """获得Bucket某项配置，具体哪种配置由 `config` 指定。该接口直接返回 `RequestResult` 对象。
