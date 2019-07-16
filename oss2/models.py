@@ -1355,7 +1355,7 @@ class BucketQosInfo(object):
     :type intranet_qps: int
 
     :param extranet_qps: 外网访问qps, 单位请求数/s
-    :type extranet_qps: str
+    :type extranet_qps: int
     """
     def __init__(self,
             total_upload_bw = None,
@@ -1378,13 +1378,39 @@ class BucketQosInfo(object):
         self.intranet_qps = intranet_qps
         self.extranet_qps = extranet_qps
 
-class UserQosInfo(BucketQosInfo):
+class UserQosInfo(object):
     """User的Qos信息    
 
     :param region: 查询的qos配置生效的区域
-    :type total_upload_bw: str
+    :type region: str
 
-    :其他参数同BucketQosInfo
+    :以下参数设置为0表示完全禁止指定类型的访问，设置为-1表示不单独限制
+    :param total_upload_bw: 总上传带宽, 单位Gbps
+    :type total_upload_bw: int
+
+    :param intranet_upload_bw: 内网上传带宽, 单位:Gbps
+    :type intranet_upload_bw: int
+
+    :param extranet_upload_bw: 外网上传带宽, 单位:Gbps
+    :type extranet_upload_bw: int
+
+    :param total_download_bw: 总下载带宽, 单位:Gbps
+    :type total_download_bw: int
+
+    :param intranet_download_bw: 内外下载带宽, 单位:Gbps
+    :type intranet_download_bw: int
+
+    :param extranet_download_bw: 外网下载带宽, 单位:Gbps
+    :type extranet_download_bw: int
+
+    :param total_qps: 总qps限制
+    :type total_qps: int
+
+    :param intranet_qps: 内网访问qps
+    :type intranet_qps: int
+
+    :param extranet_qps: 外网访问qps
+    :type extranet_qps: int
     """
     def __init__(self, 
             region=None,
@@ -1397,11 +1423,17 @@ class UserQosInfo(BucketQosInfo):
             total_qps = None,
             intranet_qps = None,
             extranet_qps = None):
-        
+
         self.region = region
-        BucketQosInfo.__init__(self, total_upload_bw, intranet_upload_bw, extranet_upload_bw, 
-                            total_download_bw, intranet_download_bw, extranet_download_bw,
-                            total_qps, intranet_qps, extranet_qps)
+        self.total_upload_bw = total_upload_bw
+        self.intranet_upload_bw = intranet_upload_bw
+        self.extranet_upload_bw = extranet_upload_bw
+        self.total_download_bw = total_download_bw
+        self.intranet_download_bw = intranet_download_bw
+        self.extranet_download_bw = extranet_download_bw
+        self.total_qps = total_qps
+        self.intranet_qps = intranet_qps
+        self.extranet_qps = extranet_qps
 
 class GetUserQosInfoResult(RequestResult, UserQosInfo):
     def __init__(self, resp):
