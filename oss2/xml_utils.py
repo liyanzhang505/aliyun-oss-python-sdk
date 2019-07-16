@@ -1216,14 +1216,14 @@ def parse_get_qos_info(result, body):
     if hasattr(result, 'region'):
         result.region = _find_tag(root, 'Region')
 
-    result.total_upload_bw = _find_tag(root, 'TotalUploadBandwidth')
-    result.intranet_upload_bw = _find_tag(root, 'IntranetUploadBandwidth')
-    result.extranet_upload_bw = _find_tag(root, 'ExtranetUploadBandwidth')
-    result.total_download_bw = _find_tag(root, 'TotalDownloadBandwidth')
-    result.intranet_download_bw = _find_tag(root, 'IntranetDownloadBandwidth')
-    result.extranet_download_bw = _find_tag(root, 'ExtranetDownloadBandwidth')
-    result.total_qps = _find_tag(root, 'TotalQps')
-    result.intranet_qps = _find_tag(root, 'IntranetQps')
-    result.extranet_qps = _find_tag(root, 'ExtranetQps')
+    result.total_upload_bw = _find_int(root, 'TotalUploadBandwidth')
+    result.intranet_upload_bw = _find_int(root, 'IntranetUploadBandwidth')
+    result.extranet_upload_bw = _find_int(root, 'ExtranetUploadBandwidth')
+    result.total_download_bw = _find_int(root, 'TotalDownloadBandwidth')
+    result.intranet_download_bw = _find_int(root, 'IntranetDownloadBandwidth')
+    result.extranet_download_bw = _find_int(root, 'ExtranetDownloadBandwidth')
+    result.total_qps = _find_int(root, 'TotalQps')
+    result.intranet_qps = _find_int(root, 'IntranetQps')
+    result.extranet_qps = _find_int(root, 'ExtranetQps')
 
     return result
