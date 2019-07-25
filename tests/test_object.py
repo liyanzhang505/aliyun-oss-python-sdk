@@ -547,6 +547,30 @@ class TestObject(OssTestCase):
         result = self.bucket.get_object_with_url_to_file(url, file_name)
         self.assertEqual(result.status, 200)
 
+    def test_get_object_with_sign_url_slash_safe(self):
+        key = '测试斜杠保护/二层目录/测试斜杠保护.object'
+        content = random_bytes(100)
+
+        result = self.bucket.put_object(key, content)
+        self.assertEqual(result.status, 200)
+
+        url = self.bucket.sign_url("GET", key, 3600)
+        result = self.bucket.get_object_with_url(url)
+        self.assertEqual(result.status, 200)
+
+        url = self.bucket.sign_url("GET", key, 3600, slash_safe=False)
+        result = self.bucket.get_object_with_url(url)
+        self.assertEqual(result.status, 200)
+
+        url = self.bucket.sign_url("GET", key, 3600, slash_safe=True)
+        slash_safe_key = urlquote('测试斜杠保护') + '/' + urlquote('二层目录') + '/' + urlquote('测试斜杠保护.object')
+        seek = url.find(slash_safe_key)
+        self.assertTrue(seek != -1)
+        result = self.bucket.get_object_with_url(url)
+        self.assertEqual(result.status, 200)
+
+        self.bucket.delete_object(key)
+
     def test_modified_since(self):
         key = self.random_key()
         content = random_bytes(16)

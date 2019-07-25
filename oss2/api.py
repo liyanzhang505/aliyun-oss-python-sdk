@@ -386,7 +386,7 @@ class Bucket(_Base):
 
         self.bucket_name = bucket_name.strip()
 
-    def sign_url(self, method, key, expires, headers=None, params=None):
+    def sign_url(self, method, key, expires, headers=None, params=None, slash_safe=False):
         """生成签名URL。
 
         常见的用法是生成加签的URL以供授信用户下载，如为log.jpg生成一个5分钟后过期的下载链接::
@@ -411,7 +411,7 @@ class Bucket(_Base):
         logger.debug(
             "Start to sign_url, method: {0}, bucket: {1}, key: {2}, expires: {3}, headers: {4}, params: {5}".format(
                 method, self.bucket_name, to_string(key), expires, headers, params))
-        req = http.Request(method, self._make_url(self.bucket_name, key),
+        req = http.Request(method, self._make_url(self.bucket_name, key, slash_safe),
                            headers=headers,
                            params=params)
         return self.auth._sign_url(req, self.bucket_name, key, expires)
@@ -2359,10 +2359,11 @@ class _UrlMaker(object):
         self.netloc = p.netloc
         self.is_cname = is_cname
 
-    def __call__(self, bucket_name, key):
+    def __call__(self, bucket_name, key, slash_safe=False):
         self.type = _determine_endpoint_type(self.netloc, self.is_cname, bucket_name)
 
-        key = urlquote(key, '')
+        safe = '/' if slash_safe is True else ''
+        key = urlquote(key, safe=safe)
 
         if self.type == _ENDPOINT_TYPE_CNAME:
             return '{0}://{1}/{2}'.format(self.scheme, self.netloc, key)
