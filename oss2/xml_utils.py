@@ -212,9 +212,6 @@ def parse_list_parts(result, body):
 
 
 def parse_batch_delete_objects(result, body):
-    if not body:
-        return result
-
     root = ElementTree.fromstring(body)
     url_encoded = _is_url_encoding(root)
 
@@ -976,9 +973,7 @@ def to_select_json_object(sql, select_params):
     options = ElementTree.SubElement(root, 'Options')
     is_doc = select_params[SelectParameters.Json_Type] == SelectJsonTypes.DOCUMENT
     _add_text_child(json, 'Type', select_params[SelectParameters.Json_Type])
-    if select_params is None:
-        return _node_to_string(root)
-    
+
     for key, value in select_params.items(): 
         if SelectParameters.SplitRange == key and is_doc == False:
             _add_text_child(json, 'Range', utils._make_split_range_string(value))
@@ -1032,7 +1027,7 @@ def to_get_select_csv_object_meta(csv_meta_param):
         elif SelectParameters.OverwriteIfExists == key:
             _add_text_child(root, SelectParameters.OverwriteIfExists, str(value))
         else:
-           raise SelectOperationClientError("The csv_meta_param contains unsupported key " + key, "") 
+            raise SelectOperationClientError("The csv_meta_param contains unsupported key " + key, "") 
 
     return _node_to_string(root)
 
@@ -1068,9 +1063,6 @@ def parse_get_tagging(result, body):
     root = ElementTree.fromstring(body)
     url_encoded = _is_url_encoding(root)
     tagset_node = root.find('TagSet')
-
-    if tagset_node is None:
-        return result
 
     tagging_rules = TaggingRule()
     for tag_node in tagset_node.findall('Tag'):

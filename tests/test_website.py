@@ -77,7 +77,7 @@ class TestWebsite(OssTestCase):
 
         # direct type Mirror
         redirect1 = Redirect(redirect_type='Mirror', mirror_url='http://www.test.com/', mirror_pass_query_string=True, 
-                            mirror_follow_redirect=True, mirror_check_md5=False, mirror_headers=mirror_header)
+                            mirror_follow_redirect=True, mirror_check_md5=False)
         
         redirect2 = Redirect(redirect_type='Mirror', pass_query_string=False, mirror_url='http://www.test.com/', 
                             mirror_url_slave='http://www.slave.com/', mirror_url_probe='http://www.test.com/index.html', 
@@ -128,6 +128,9 @@ class TestWebsite(OssTestCase):
             self.assertEqual(t_redirect.mirror_check_md5, cmp_redirect.mirror_check_md5)
 
             #check redirect mirror_headers
+            if cmp_redirect.mirror_headers is None:
+                continue
+
             t_mirror_headers = t_redirect.mirror_headers
             cmp_mirror_headers = cmp_redirect.mirror_headers
             self.assertEqual(t_mirror_headers.pass_all, cmp_mirror_headers.pass_all)
@@ -135,7 +138,7 @@ class TestWebsite(OssTestCase):
             self.assertEqual(len(t_mirror_headers.remove_list), len(cmp_mirror_headers.remove_list))
             self.assertEqual(len(t_mirror_headers.set_list), len(cmp_mirror_headers.set_list))
 
-            self.bucket.delete_bucket_website()  
+        self.bucket.delete_bucket_website() 
 
     def test_normal_set_website_with_alicdn_external_internal(self):
         index_file = 'index.html'

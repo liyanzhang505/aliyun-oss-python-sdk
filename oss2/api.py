@@ -1949,8 +1949,7 @@ class Bucket(_Base):
         logger.debug("Start to put object tagging, bucket: {0} tagging: {1}".format(
             self.bucket_name, tagging))
 
-        if headers is not None:
-            headers = http.CaseInsensitiveDict(headers)
+        headers = http.CaseInsensitiveDict(headers)
 
         data = self.__convert_data(Tagging, xml_utils.to_put_tagging, tagging) 
         resp = self.__do_bucket('PUT', data=data, params={Bucket.TAGGING: ''}, headers=headers)
@@ -2294,7 +2293,6 @@ class CryptoBucket():
         with open(to_unicode(filename), 'wb') as f:
             result = self.get_object(key, headers=headers, progress_callback=progress_callback,
                                      params=params)
-
             if result.content_length is None:
                 shutil.copyfileobj(result, f)
             else:
