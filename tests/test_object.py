@@ -549,6 +549,7 @@ class TestObject(OssTestCase):
 
     def test_get_object_with_sign_url_slash_safe(self):
         key = 'url下载测试斜杠保护+/二层目录+/测+试斜杠保护.object'
+        slash_safe_key = urlquote('url下载测试斜杠保护+') + '/' + urlquote('二层目录+') + '/' + urlquote('测+试斜杠保护.object')
         content = random_bytes(100)
 
         result = self.bucket.put_object(key, content)
@@ -556,18 +557,25 @@ class TestObject(OssTestCase):
 
         # 不带slash_safe参数
         url = self.bucket.sign_url("GET", key, 60)
+        # 验证url中‘/’是否被转义
+        seek = url.find(slash_safe_key)
+        self.assertEqual(seek, -1)
+
         result = self.bucket.get_object_with_url(url)
         self.assertEqual(result.status, 200)
 
         # slash_safe = False
         url = self.bucket.sign_url("GET", key, 60, slash_safe=False)
+        # 验证url中‘/’是否被转义
+        seek = url.find(slash_safe_key)
+        self.assertEqual(seek, -1)
+
         result = self.bucket.get_object_with_url(url)
         self.assertEqual(result.status, 200)
 
         # slash_safe = True
         url = self.bucket.sign_url("GET", key, 60, slash_safe=True)
         # 验证url中‘/’是否被转义
-        slash_safe_key = urlquote('url下载测试斜杠保护+') + '/' + urlquote('二层目录+') + '/' + urlquote('测+试斜杠保护.object')
         seek = url.find(slash_safe_key)
         self.assertTrue(seek != -1)
 
@@ -578,10 +586,15 @@ class TestObject(OssTestCase):
     
     def test_put_object_with_sign_url_slash_safe(self):
         key = 'url上传测试斜杠保护+/二层目录+/测+试斜杠保护.object'
+        slash_safe_key = urlquote('url上传测试斜杠保护+') + '/' + urlquote('二层目录+') + '/' + urlquote('测+试斜杠保护.object')
         content = random_bytes(1024)
 
         # 不带slash_safe 参数
         url = self.bucket.sign_url('PUT', key, 60)
+        # 验证url中‘/’是否被转义
+        seek = url.find(slash_safe_key)
+        self.assertEqual(seek, -1)
+
         result = self.bucket.put_object_with_url(url, content)
         self.assertEqual(result.status, 200)
 
@@ -593,6 +606,10 @@ class TestObject(OssTestCase):
 
         # slash_safe = False
         url = self.bucket.sign_url('PUT', key, 60, slash_safe=False)
+        # 验证url中‘/’是否被转义
+        seek = url.find(slash_safe_key)
+        self.assertEqual(seek, -1)
+
         result = self.bucket.put_object_with_url(url, content)
         self.assertEqual(result.status, 200)
 
@@ -604,8 +621,7 @@ class TestObject(OssTestCase):
 
         # slash_safe = True
         url = self.bucket.sign_url('PUT', key, 60, slash_safe=True)
-        # 验证url中‘/’是否被转义, 
-        slash_safe_key = urlquote('url上传测试斜杠保护+') + '/' + urlquote('二层目录+') + '/' + urlquote('测+试斜杠保护.object')
+        # 验证url中‘/’是否被转义
         seek = url.find(slash_safe_key)
         self.assertTrue(seek != -1)
 

@@ -405,12 +405,15 @@ class Bucket(_Base):
 
         :param params: 需要签名的HTTP查询参数
 
+        :param slash_safe: 是否开启key名称中的‘/’转义保护，如果不开启'/'将会转义成%2F
+        :type slash_safe: bool
+
         :return: 签名URL。
         """
         key = to_string(key)
         logger.debug(
-            "Start to sign_url, method: {0}, bucket: {1}, key: {2}, expires: {3}, headers: {4}, params: {5}".format(
-                method, self.bucket_name, to_string(key), expires, headers, params))
+            "Start to sign_url, method: {0}, bucket: {1}, key: {2}, expires: {3}, headers: {4}, params: {5}, slash_safe: {6}".format(
+                method, self.bucket_name, to_string(key), expires, headers, params, slash_safe))
         req = http.Request(method, self._make_url(self.bucket_name, key, slash_safe),
                            headers=headers,
                            params=params)
