@@ -396,8 +396,9 @@ class Bucket(_Base):
                      "{4}".format(endpoint, is_cname, connect_timeout, app_name, enable_crc))
         super(Bucket, self).__init__(auth, endpoint, is_cname, session, connect_timeout,
                                      app_name, enable_crc)
-
-        self.bucket_name = bucket_name.strip()
+        if utils.is_valid_bucket_name(bucket_name) is not True:
+            raise ClientError("The bucket_name you inputted is illegal, please check it.");
+        self.bucket_name = bucket_name
 
     def sign_url(self, method, key, expires, headers=None, params=None, slash_safe=False):
         """生成签名URL。

@@ -48,11 +48,19 @@ def clean_and_delete_bucket(bucket):
     try:
         result = bucket.get_bucket_info()
         if result.versioning_status in [oss2.BUCKET_VERSIONING_ENABLE, oss2.BUCKET_VERSIONING_SUSPEND]:
-            all_objects = bucket.list_object_versions()
-            for obj in all_objects.versions:
-                bucket.delete_object(obj.key, params={'versionId': obj.versionid})
-            for del_marker in all_objects.delete_marker:
-                bucket.delete_object(del_marker.key, params={'versionId': del_marker.versionid})
+            next_key_marker = None
+            next_versionid_marker = None
+            is_truncated = True
+            while is_truncated is True:
+                result = bucket.list_object_versions(key_marker=next_key_marker, versionid_marker=next_versionid_marker)
+                for obj in result.versions:
+                    bucket.delete_object(obj.key, params={'versionId': obj.versionid})
+                for del_marker in result.delete_marker:
+                    bucket.delete_object(del_marker.key, params={'versionId': del_marker.versionid})
+                is_truncated = result.is_truncated
+                if is_truncated:
+                    next_key_marker = result.next_key_marker
+                    next_versionid_marker = result.next_versionid_marker
     except:
         pass
 
