@@ -312,6 +312,8 @@ def parse_get_bucket_info(result, body):
     return result
 
 def _parse_bucket_encryption_info(node):
+    if node is None:
+        return None
 
     rule = ServerSideEncryptionRule()
 
@@ -1286,5 +1288,18 @@ def to_put_bucket_user_qos(user_qos):
     root = ElementTree.Element('BucketUserQos')
 
     _add_text_child(root, 'StorageCapacity', str(user_qos.storage_capacity))
+
+    return _node_to_string(root)
+
+def to_put_restore_config(restore_config):
+    root = ElementTree.Element('RestoreRequest')
+
+    _add_text_child(root, 'Days', str(restore_config.days))
+
+    if restore_config.job_parameters is not None:
+        job_parameters = restore_config.job_parameters
+        job_parameters_node = ElementTree.SubElement(root, "JobParameters")
+        if job_parameters.tier is not None:
+            _add_text_child(job_parameters_node, 'Tier', job_parameters.tier)
 
     return _node_to_string(root)

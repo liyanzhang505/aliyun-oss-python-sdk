@@ -14,6 +14,36 @@ from .select_response import SelectResponseAdapter
 from .headers import *
 import json
 
+
+OBJECT_ACL_DEFAULT = 'default'
+OBJECT_ACL_PRIVATE = 'private'
+OBJECT_ACL_PUBLIC_READ = 'public-read'
+OBJECT_ACL_PUBLIC_READ_WRITE = 'public-read-write'
+
+BUCKET_ACL_PRIVATE = 'private'
+BUCKET_ACL_PUBLIC_READ = 'public-read'
+BUCKET_ACL_PUBLIC_READ_WRITE = 'public-read-write'
+
+BUCKET_STORAGE_CLASS_STANDARD = 'Standard'
+BUCKET_STORAGE_CLASS_IA = 'IA'
+BUCKET_STORAGE_CLASS_ARCHIVE = 'Archive'
+BUCKET_STORAGE_CLASS_LONG_TERM_ARCHIVE = "LongTermArchive"
+
+BUCKET_DATA_REDUNDANCY_TYPE_LRS = "LRS"
+BUCKET_DATA_REDUNDANCY_TYPE_ZRS = "ZRS"
+
+REDIRECT_TYPE_MIRROR = 'Mirror'
+REDIRECT_TYPE_EXTERNAL = 'External'
+REDIRECT_TYPE_INTERNAL = 'Internal'
+REDIRECT_TYPE_ALICDN = 'AliCDN'
+
+PAYER_BUCKETOWNER = 'BucketOwner'
+PAYER_REQUESTER = 'Requester'
+
+RESTORE_TIER_EXPEDITED = 'Expedited'
+RESTORE_TIER_STANDARD = 'Standard'
+RESTORE_TIER_BULK = 'Bulk'
+
 class PartInfo(object):
     """表示分片信息的文件。
 
@@ -289,12 +319,6 @@ class SimplifiedObjectInfo(object):
         return self.last_modified is None
 
 
-OBJECT_ACL_DEFAULT = 'default'
-OBJECT_ACL_PRIVATE = 'private'
-OBJECT_ACL_PUBLIC_READ = 'public-read'
-OBJECT_ACL_PUBLIC_READ_WRITE = 'public-read-write'
-
-
 class GetObjectAclResult(RequestResult):
     def __init__(self, resp):
         super(GetObjectAclResult, self).__init__(resp)
@@ -322,7 +346,7 @@ class SimplifiedBucketInfo(object):
         #: 同区域ECS访问Bucket的内网域名
         self.intranet_endpoint = intranet_endpoint
 
-        #: Bucket存储类型，支持“Standard”、“IA”、“Archive”
+        #: Bucket存储类型，支持“Standard”、“IA”、“Archive”、“LongTermArchive”
         self.storage_class = storage_class
 
 
@@ -389,25 +413,6 @@ class ListPartsResult(RequestResult):
         # 罗列出的Part信息，类型为 `PartInfo` 列表。
         self.parts = []
 
-
-BUCKET_ACL_PRIVATE = 'private'
-BUCKET_ACL_PUBLIC_READ = 'public-read'
-BUCKET_ACL_PUBLIC_READ_WRITE = 'public-read-write'
-
-BUCKET_STORAGE_CLASS_STANDARD = 'Standard'
-BUCKET_STORAGE_CLASS_IA = 'IA'
-BUCKET_STORAGE_CLASS_ARCHIVE = 'Archive'
-
-BUCKET_DATA_REDUNDANCY_TYPE_LRS = "LRS"
-BUCKET_DATA_REDUNDANCY_TYPE_ZRS = "ZRS"
-
-REDIRECT_TYPE_MIRROR = 'Mirror'
-REDIRECT_TYPE_EXTERNAL = 'External'
-REDIRECT_TYPE_INTERNAL = 'Internal'
-REDIRECT_TYPE_ALICDN = 'AliCDN'
-
-PAYER_BUCKETOWNER = 'BucketOwner'
-PAYER_REQUESTER = 'Requester'
 
 class GetBucketAclResult(RequestResult):
     def __init__(self, resp):
@@ -1514,3 +1519,29 @@ class GetBucketUserQosResult(RequestResult, BucketUserQos):
     def __init__(self, resp):
         RequestResult.__init__(self, resp)
         BucketUserQos.__init__(self)
+
+class ResotreJobParameters(object):
+    """长期归档类型（LongTermArchive）的解冻参数。
+
+    :param tier: 解冻优先级, 取值范围: 
+        oss2.models.RESTORE_TIER_EXPEDITED: 1个小时之内解冻完成。
+        oss2.models.RESTORE_TIER_STANDARD: 5小时之内解冻完成。
+        oss2.models.RESTORE_TIER_BULK: 10小时之内解冻完成。
+    :type tier: str
+    """
+    def __init__(self, tier):
+        self.tier = tier
+
+class RestoreConfiguration(object):
+    """归档类型（Archive, LongTermArchive）文件的解冻配置
+
+    :param days: 解冻之后保持解冻状态的天数。
+    :type days: int
+
+    :param job_parameters: 解冻参数, 解冻长期归档（LongTermArchive）类型的文件才需要此配置。如果不配置此项，
+            解冻优先级默认为 oss2.models.RESTORE_TIER_STANDARD: 5小时之内解冻完成。
+    :type job_parameters: class:`ResotreJobParameters <oss2.models.ResotreJobParameters>`
+    """
+    def __init__(self, days, job_parameters=None):
+        self.days = days
+        self.job_parameters = job_parameters
